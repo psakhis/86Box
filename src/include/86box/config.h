@@ -51,12 +51,18 @@ typedef struct config_t {
     /* General configuration */
     int vid_resize;           /* Window is resizable or not */
     int vid_renderer;         /* Renderer */
+    int vid_fullscreen;       /* Start emulator in full screen */
     int vid_fullscreen_scale; /* Full screen scale type */
     int vid_fullscreen_start; /* Start emulator in full screen */
     int vid_force_43;         /* Force 4:3 display ratio in windowed mode */
     int vid_scale;            /* Windowed mode scale */
     int vid_overscan;         /* EGA/(S)VGA overscan enabled */
     int vid_cga_contrast;     /* CGA alternate contrast enabled */
+    int vid_mister;           /* GroovyMiSTer enabled */
+    int vid_mister_mtu;       /* GroovyMiSTer jumbo frames */
+    int vid_mister_lz4;       /* GroovyMiSTer lz4 compression */
+    char vid_mister_ip[16];   /* GroovyMiSTer ip */  
+    int vid_mister_interlaced_fb; /*GroovyMiSTer interlaced frame buffer */
     int vid_grayscale;        /* Video is grayscale */
     int vid_grayscale_type;   /* Video grayscale type */
     int vid_invert_display;   /* Invert display */

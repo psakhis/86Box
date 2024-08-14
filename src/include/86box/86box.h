@@ -117,6 +117,12 @@ extern int      scale;                      /* (C) screen scale factor */
 extern int      dpi_scale;                  /* (C) DPI scaling of the emulated screen */
 extern int      vid_api;                    /* (C) video renderer */
 extern int      vid_cga_contrast;           /* (C) video */
+extern int      vid_display;                /* (C) video */ 		
+extern int      vid_mister;                 /* (C) video */ 		
+extern int      vid_mister_mtu;             /* (C) video */ 
+extern int      vid_mister_lz4;             /* (C) video */  
+extern char     vid_mister_ip[16];          /* (C) video */ 
+extern int      vid_mister_interlaced_fb;   /* (C) video */ 
 extern int      video_fullscreen;           /* (C) video */
 extern int      video_fullscreen_first;     /* (C) video */
 extern int      video_fullscreen_scale;     /* (C) video */

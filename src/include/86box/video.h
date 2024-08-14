@@ -109,6 +109,12 @@ typedef struct monitor_t {
     int                      mon_unscaled_size_y;
     double                   mon_res_x;
     double                   mon_res_y;
+    int                      mon_sw_req_w;
+    int                      mon_sw_req_h;
+    double                   mon_sw_req_vfreq;
+    int                      mon_sw_w;
+    int                      mon_sw_h;
+    double                   mon_sw_vfreq;
     int                      mon_bpp;
     bitmap_t                *target_buffer;
     int                      mon_video_timing_read_b;
@@ -170,6 +176,12 @@ extern bitmap_t *buffer32;
 #define video_timing_write_w (monitors[monitor_index_global].mon_video_timing_write_w)
 #define video_res_x          (monitors[monitor_index_global].mon_res_x)
 #define video_res_y          (monitors[monitor_index_global].mon_res_y)
+#define video_sw_req_w       (monitors[monitor_index_global].mon_sw_req_w)
+#define video_sw_req_h       (monitors[monitor_index_global].mon_sw_req_h)
+#define video_sw_req_vfreq   (monitors[monitor_index_global].mon_sw_req_vfreq)
+#define video_sw_w           (monitors[monitor_index_global].mon_sw_w)
+#define video_sw_h           (monitors[monitor_index_global].mon_sw_h)
+#define video_sw_vfreq       (monitors[monitor_index_global].mon_sw_vfreq)
 #define video_bpp            (monitors[monitor_index_global].mon_bpp)
 #define xsize                (monitors[monitor_index_global].mon_xsize)
 #define ysize                (monitors[monitor_index_global].mon_ysize)
@@ -207,6 +219,12 @@ extern int          force_43;
 extern int          vid_resize;
 extern int          herc_blend;
 extern int          vid_cga_contrast;
+extern int          vid_mister;
+extern int          vid_mister_mtu;
+extern int          vid_mister_lz4;    
+extern char         vid_mister_ip[16];     
+extern int          vid_mister_interlaced_fb;
+extern int          vid_display;
 extern int          video_grayscale;
 extern int          video_graytype;
 
@@ -254,6 +272,7 @@ extern void video_blend_monitor(int x, int y, int monitor_index);
 extern void video_process_8_monitor(int x, int y, int monitor_index);
 extern void video_blit_memtoscreen_monitor(int x, int y, int w, int h, int monitor_index);
 extern void video_blit_complete_monitor(int monitor_index);
+extern void video_update_sw_modeline_monitor(int w, int h, double vfreq, int monitor_index);
 extern void video_wait_for_blit_monitor(int monitor_index);
 extern void video_wait_for_buffer_monitor(int monitor_index);
 
@@ -275,6 +294,8 @@ extern void    video_voodoo_init(void);
 extern uint8_t video_force_resize_get_monitor(int monitor_index);
 extern void    video_force_resize_set_monitor(uint8_t res, int monitor_index);
 extern void    video_update_timing(void);
+
+extern void    video_blit_memtomister(int start_x, int start_y, int w, int h, int monitor_index);
 
 extern void loadfont_ex(char *s, int format, int offset);
 extern void loadfont(char *s, int format);

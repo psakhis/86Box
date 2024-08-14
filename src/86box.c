@@ -162,6 +162,12 @@ int      dpi_scale                              = 0;              /* (C) DPI sca
                                                                          screen */
 int      vid_api                                = 0;              /* (C) video renderer */
 int      vid_cga_contrast                       = 0;              /* (C) video */
+int      vid_mister                             = 0;              /* (C) video */
+int      vid_mister_mtu                         = 0;              /* (C) video */
+int      vid_mister_lz4                         = 1;              /* (C) video */
+char     vid_mister_ip[16]                      = { '\0' };       /* (C) video */
+int      vid_mister_interlaced_fb               = 0;              /* (C) video */
+int      vid_display                            = 0;              /* (C) video */
 int      video_fullscreen                       = 0;              /* (C) video */
 int      video_fullscreen_scale                 = 0;              /* (C) video */
 int      video_fullscreen_first                 = 0;              /* (C) video */

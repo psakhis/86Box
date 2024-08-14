@@ -959,7 +959,7 @@ svga_recalctimings(svga_t *svga)
 
     /* Inform the user interface of any DPMS mode changes. */
     if (svga->dpms) {
-        if (!svga->dpms_ui) {
+        if (!svga->dpms_ui && !vid_mister) {
             /* Make sure to black out the entire screen to avoid lingering image. */
             int y_add   = enable_overscan ? svga->monitor->mon_overscan_y : 0;
             int x_add   = enable_overscan ? svga->monitor->mon_overscan_x : 0;
@@ -976,6 +976,24 @@ svga_recalctimings(svga_t *svga)
         svga->dpms_ui = 0;
         ui_sb_set_text_w(NULL);
     }
+    
+    //hack 60hz modes    
+    if (svga->vtotal == 449 && svga->dispend == 400 && svga->vsyncstart == 413) {
+            svga->vtotal = 527;     
+            svga->vblankstart = 407;      
+            svga->vsyncstart = 491;                     
+    }  
+    if (svga->vtotal == 449 && svga->dispend == 382 && svga->vsyncstart == 413) {
+            svga->vtotal = 527;     
+            svga->vblankstart = 407;
+            svga->vsyncstart = 491;           
+    }  
+    if (svga->vtotal == 495 && svga->dispend == 448 && svga->vsyncstart == 459) {                  
+            svga->vtotal = 527;     
+            svga->vblankstart = 455;     
+            svga->vsyncstart = 498;                       
+    }        
+    //end hack
 }
 
 static void
@@ -1083,7 +1101,8 @@ svga_poll(void *priv)
             svga->ma &= svga->vram_display_mask;
             if (svga->firstline == 2000) {
                 svga->firstline = svga->displine;
-                video_wait_for_buffer_monitor(svga->monitor_index);
+                if (!vid_mister)
+                   video_wait_for_buffer_monitor(svga->monitor_index);
             }
 
             if (svga->hwcursor_on || svga->dac_hwcursor_on || svga->overlay_on) {
@@ -1224,13 +1243,30 @@ svga_poll(void *priv)
             if (!svga->override) {
                 if (svga->vertical_linedbl) {
                     wy = (svga->lastline - svga->firstline) << 1;
-                    svga->vdisp = wy + 1;
                     svga_doblit(wx, wy, svga);
                 } else {
                     wy = svga->lastline - svga->firstline;
-                    svga->vdisp = wy + 1;
                     svga_doblit(wx, wy, svga);
                 }
+                
+                //switchres resolution  
+                /*              
+                wy += 1;
+                if (svga->crtc[9] & 0x80)
+                   wy /= 2;
+                if (!(svga->crtc[0x17] & 2))
+                   wy *= 4;
+                else if (!(svga->crtc[0x17] & 1))
+                      wy *= 2;
+                wy /= (svga->crtc[9] & 31) + 1;
+                if (svga->render == svga_render_8bpp_lowres ||
+                    svga->render == svga_render_15bpp_lowres ||
+                    svga->render == svga_render_16bpp_lowres ||
+                    svga->render == svga_render_24bpp_lowres ||
+                    svga->render == svga_render_32bpp_lowres)
+                    wx /= 2;                    
+                    */
+                //end switchres resolution
             }
 
             svga->firstline = 2000;
@@ -1859,8 +1895,57 @@ svga_doblit(int wx, int wy, svga_t *svga)
     if (xs_temp < 64)
         xs_temp = 640;
     if (ys_temp < 32)
-        ys_temp = 200;
-
+        ys_temp = 200;       
+      
+    //psakhis
+    if ((svga->crtc[0x17] & 0x80) && !svga->dpms)
+    {
+    	int sw_wx = xs_temp;
+    	int sw_wy = ys_temp;
+    	int sw_w_tmp = svga->monitor->mon_sw_req_w;
+        int sw_h_tmp = svga->monitor->mon_sw_req_h;
+        double sw_vfreq_tmp = svga->monitor->mon_sw_req_vfreq;
+           	       
+        if (svga->crtc[9] & 0x80)
+           sw_wy /= 2;
+        if (!(svga->crtc[0x17] & 2))
+           sw_wy *= 4;
+        else if (!(svga->crtc[0x17] & 1))
+           sw_wy *= 2;
+        sw_wy /= (svga->crtc[9] & 31) + 1;
+        if (svga->render == svga_render_8bpp_lowres ||
+            svga->render == svga_render_15bpp_lowres ||
+            svga->render == svga_render_16bpp_lowres ||
+            svga->render == svga_render_24bpp_lowres ||
+            svga->render == svga_render_32bpp_lowres)
+           sw_wx /= 2;        
+                	                
+        //text mode
+        if ((!(svga->gdcreg[6] & 1) && !(svga->attrregs[0x10] & 1)))
+        {	      	  
+		sw_w_tmp = 720;
+                sw_h_tmp = 400;
+        }
+        else
+        { 	
+                sw_w_tmp = (sw_wx >= 160) ? sw_wx : sw_w_tmp;
+                sw_h_tmp = (sw_wy >= 120) ? sw_wy : sw_h_tmp;                
+        }
+        
+        //aprox 800 pixels htotal       
+        if (svga->clock == VGACONST1) 
+            sw_vfreq_tmp = 25175000.0 / (svga->vtotal * 800);
+        else      
+            sw_vfreq_tmp = 28322000.0 / (svga->vtotal * 900);                    
+        if (sw_vfreq_tmp < 50 || sw_vfreq_tmp > 61)
+            sw_vfreq_tmp = 59.701;          
+               
+        //change for resolution        
+        if (sw_w_tmp != svga->monitor->mon_sw_req_w || sw_h_tmp != svga->monitor->mon_sw_req_h || sw_vfreq_tmp != svga->monitor->mon_sw_req_vfreq)                
+            video_update_sw_modeline_monitor(sw_w_tmp, sw_h_tmp, sw_vfreq_tmp, svga->monitor_index);                                           
+    }                           
+    //end psakhis
+    
     if ((svga->crtc[0x17] & 0x80) && ((xs_temp != svga->monitor->mon_xsize) || (ys_temp != svga->monitor->mon_ysize) || video_force_resize_get_monitor(svga->monitor_index))) {
         /* Screen res has changed.. fix up, and let them know. */
         svga->monitor->mon_xsize = xs_temp;
@@ -1899,9 +1984,12 @@ svga_doblit(int wx, int wy, svga_t *svga)
             for (j = 0; j < (svga->monitor->mon_xsize + x_add); j++)
                 p[j] = svga->dpms ? 0 : svga->overscan_color;
         }
-    }
-
-    video_blit_memtoscreen_monitor(x_start, y_start, svga->monitor->mon_xsize + x_add, svga->monitor->mon_ysize + y_add, svga->monitor_index);
+    }           
+    
+    if (vid_mister)        	              
+        video_blit_memtomister(x_start, y_start, svga->monitor->mon_xsize + x_add, svga->monitor->mon_ysize + y_add, svga->monitor_index);                   
+             
+    video_blit_memtoscreen_monitor(x_start, y_start, svga->monitor->mon_xsize + x_add, svga->monitor->mon_ysize + y_add, svga->monitor_index);    
 
     if (svga->vertical_linedbl)
         svga->vertical_linedbl >>= 1;

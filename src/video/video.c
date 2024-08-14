@@ -73,6 +73,8 @@
 #include <86box/thread.h>
 #include <86box/video.h>
 #include <86box/vid_svga.h>
+#include "../deps/switchres/switchres_wrapper.h"
+#include "../deps/mister/gfx_mister.h"
 
 #include <minitrace/minitrace.h>
 
@@ -102,6 +104,8 @@ uint32_t    *video_16to32         = NULL;
 monitor_t          monitors[MONITORS_NUM];
 monitor_settings_t monitor_settings[MONITORS_NUM];
 atomic_bool        doresize_monitors[MONITORS_NUM];
+
+
 
 #ifdef _WIN32
 void * (*__cdecl video_copy)(void *_Dst, const void *_Src, size_t _Size) = memcpy;
@@ -475,9 +479,10 @@ video_blit_memtoscreen_monitor(int x, int y, int w, int h, int monitor_index)
     monitors[monitor_index].mon_blit_data_ptr->x             = x;
     monitors[monitor_index].mon_blit_data_ptr->y             = y;
     monitors[monitor_index].mon_blit_data_ptr->w             = w;
-    monitors[monitor_index].mon_blit_data_ptr->h             = h;
+    monitors[monitor_index].mon_blit_data_ptr->h             = h;  
 
     thread_set_event(monitors[monitor_index].mon_blit_data_ptr->wake_blit_thread);
+       
     MTR_END("video", "video_blit_memtoscreen");
 }
 
@@ -697,6 +702,84 @@ video_update_timing(void)
     }
 }
 
+//is called from vid_svga.c at every change res mode
+void 
+video_update_sw_modeline_monitor(int w, int h, double vfreq, int monitor_index)
+{         
+     monitors[monitor_index].mon_sw_req_w = w;	
+     monitors[monitor_index].mon_sw_req_h = h;	
+     monitors[monitor_index].mon_sw_req_vfreq = vfreq;
+     
+     pclog("video_update_sw_modeline_monitor %dx%d@%f\n", w, h, vfreq);
+     
+     if (vid_mister)
+     {        	     
+             sr_init_disp("dummy", NULL);
+	     sr_mode sw;
+	     int sr_mode_flags = 0; 
+	     int retSR = 0;
+	     
+	     if (h > 288)         	
+	     	sr_mode_flags |= SR_MODE_INTERLACED;    	  
+	    	
+	     retSR = sr_add_mode(w, h, vfreq, sr_mode_flags ,&sw);   	                  
+	     
+	     if (retSR)
+	     {
+	        mister_set_mode((double)(sw.pclock) / 1000000.0, sw.width, sw.hbegin, sw.hend, sw.htotal, sw.height, sw.vbegin, sw.vend, sw.vtotal, (!vid_mister_interlaced_fb && sw.interlace) ? 2 : sw.interlace);          
+	        monitors[monitor_index].mon_sw_w = sw.width;	
+	        monitors[monitor_index].mon_sw_h = sw.height;	
+	        monitors[monitor_index].mon_sw_vfreq = (double)(sw.pclock) / 1000000.0;		       
+	     }	     
+     }   
+}
+
+//is called from vid_svga.c at every doblit
+void    
+video_blit_memtomister(int start_x, int start_y, int w, int h, int monitor_index)
+{   
+    if (!vid_mister || !mister_is_connected())                     
+       return;
+       
+    char* b_rgb = mister_get_blit_buffer();
+    uint32_t temp = 0x00000000;
+    uint32_t c = 0; 
+           
+    if (start_x + w < monitors[monitor_index].mon_sw_w)
+    {
+       w = monitors[monitor_index].mon_sw_w;
+       start_x = 0;
+    }   
+
+    if (start_y + h < monitors[monitor_index].mon_sw_h)
+    {
+       h = monitors[monitor_index].mon_sw_h;
+       start_y = 0;
+    }   
+    
+    int field = mister_get_field();
+    int interlaced_fb = mister_is_interlaced_fb();
+    
+    for (int y = field; y < h; ++y) {       
+        for (int x = 0; x < w; ++x) {    
+            if (monitors[monitor_index].target_buffer == NULL)            
+                memset(&b_rgb[c], 0x00, 3);
+            else {            	                                                      
+                temp         = monitors[monitor_index].target_buffer->line[start_y + y][start_x + x];                                           
+                b_rgb[c + 2] = (temp >> 16) & 0xff;
+                b_rgb[c + 1] = (temp >> 8) & 0xff;
+                b_rgb[c + 0] = temp & 0xff;                               
+            }            
+            c = c + 3;
+            if (monitors[monitor_index].mon_sw_req_w == w / 2) x++;           
+        }
+        if (monitors[monitor_index].mon_sw_req_h == h / 2) y++;
+        if (interlaced_fb) y++;
+    }
+    
+    mister_blit();      	
+}
+
 int
 calc_6to8(int c)
 {
@@ -849,7 +932,13 @@ video_monitor_init(int index)
     monitors[index].mon_xsize                            = 640;
     monitors[index].mon_ysize                            = 480;
     monitors[index].mon_res_x                            = 640;
-    monitors[index].mon_res_y                            = 480;
+    monitors[index].mon_res_y                            = 480;    
+    monitors[index].mon_sw_req_w                         = 640;    
+    monitors[index].mon_sw_req_h                         = 480;    
+    monitors[index].mon_sw_req_vfreq                     = 60.0;        
+    monitors[index].mon_sw_w                             = 640;    
+    monitors[index].mon_sw_h                             = 480;    
+    monitors[index].mon_sw_vfreq                         = 60.0;    
     monitors[index].mon_scrnsz_x                         = 640;
     monitors[index].mon_scrnsz_y                         = 480;
     monitors[index].mon_efscrnsz_y                       = 480;
@@ -872,7 +961,12 @@ video_monitor_init(int index)
     atomic_init(&monitors[index].mon_screenshots, 0);
     if (index >= 1)
         ui_init_monitor(index);
-    monitors[index].mon_blit_data_ptr->blit_thread = thread_create(blit_thread, monitors[index].mon_blit_data_ptr);
+    monitors[index].mon_blit_data_ptr->blit_thread = thread_create(blit_thread, monitors[index].mon_blit_data_ptr);    
+    if (vid_mister)
+    {
+       sr_init();      
+       mister_init(vid_mister_ip, vid_mister_lz4, vid_mister_mtu ? 3800 : 1500);      
+    }   
 }
 
 void
@@ -897,6 +991,11 @@ video_monitor_close(int monitor_index)
     destroy_bitmap(monitors[monitor_index].target_buffer);
     monitors[monitor_index].target_buffer = NULL;
     memset(&monitors[monitor_index], 0, sizeof(monitor_t));
+    if (vid_mister)
+    {
+       sr_deinit();
+       mister_close();
+    }   
 }
 
 void

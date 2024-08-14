@@ -121,9 +121,9 @@ load_general(void)
     ini_section_delete_var(cat, "vid_api");
 
     video_fullscreen_scale = ini_section_get_int(cat, "video_fullscreen_scale", 1);
-
+    video_fullscreen       = !!ini_section_get_int(cat, "video_fullscreen", 0);
     video_fullscreen_first = ini_section_get_int(cat, "video_fullscreen_first", 1);
-
+    
     video_filter_method = ini_section_get_int(cat, "video_filter_method", 1);
 
     force_43 = !!ini_section_get_int(cat, "force_43", 0);
@@ -134,6 +134,12 @@ load_general(void)
 
     enable_overscan  = !!ini_section_get_int(cat, "enable_overscan", 0);
     vid_cga_contrast = !!ini_section_get_int(cat, "vid_cga_contrast", 0);
+    vid_mister       = !!ini_section_get_int(cat, "vid_mister", 0);   
+    vid_mister_mtu   = !!ini_section_get_int(cat, "vid_mister_mtu", 0);     
+    vid_mister_lz4   = !!ini_section_get_int(cat, "vid_mister_lz4", 1);   
+    strncpy(vid_mister_ip, ini_section_get_string(cat, "vid_mister_ip", ""), sizeof(vid_mister_ip) - 1);    
+    vid_mister_interlaced_fb = !!ini_section_get_int(cat, "vid_mister_interlaced_fb", 0);   
+    vid_display      = !!ini_section_get_int(cat, "vid_display", 0);    
     video_grayscale  = ini_section_get_int(cat, "video_grayscale", 0);
     video_graytype   = ini_section_get_int(cat, "video_graytype", 0);
 
@@ -1737,6 +1743,11 @@ save_general(void)
     else
         ini_section_set_int(cat, "video_fullscreen_scale", video_fullscreen_scale);
 
+    if (video_fullscreen == 0)
+        ini_section_delete_var(cat, "video_fullscreen");
+    else
+        ini_section_set_int(cat, "video_fullscreen", video_fullscreen);
+
     if (video_fullscreen_first == 1)
         ini_section_delete_var(cat, "video_fullscreen_first");
     else
@@ -1772,6 +1783,36 @@ save_general(void)
     else
         ini_section_set_int(cat, "vid_cga_contrast", vid_cga_contrast);
 
+    if (vid_mister == 0)
+        ini_section_delete_var(cat, "vid_mister");
+    else
+        ini_section_set_int(cat, "vid_mister", vid_mister);
+    
+    if (vid_mister_lz4 == 1)
+        ini_section_delete_var(cat, "vid_mister_lz4");
+    else
+        ini_section_set_int(cat, "vid_mister_lz4", vid_mister_lz4);
+        
+    if (vid_mister_mtu == 0)
+        ini_section_delete_var(cat, "vid_mister_mtu");
+    else
+        ini_section_set_uint(cat, "vid_mister_mtu", vid_mister_mtu);    
+    
+    if (vid_mister_interlaced_fb == 0)
+        ini_section_delete_var(cat, "vid_mister_interlaced_fb");
+    else
+        ini_section_set_int(cat, "vid_mister_interlaced_fb", vid_mister_interlaced_fb);
+    
+    if (strlen(vid_mister_ip) > 0)
+        ini_section_set_string(cat, "vid_mister_ip", vid_mister_ip);
+    else
+        ini_section_delete_var(cat, "vid_mister_ip");
+            
+    if (vid_display == 0)
+        ini_section_delete_var(cat, "vid_display");
+    else
+        ini_section_set_int(cat, "vid_display", vid_display);    
+        
     if (video_grayscale == 0)
         ini_section_delete_var(cat, "video_grayscale");
     else
