@@ -209,7 +209,7 @@ elseif(WIN32)
         OPTIONAL)
 endif()
 
-
+add_subdirectory(deps)
 add_subdirectory(device)
 add_subdirectory(disk)
 add_subdirectory(floppy)
@@ -228,7 +228,11 @@ endif()
 
 if (QT)
     add_subdirectory(qt)
+elseif(WIN32)
+    add_subdirectory(winsr)    
 else()
     add_compile_definitions(USE_SDL_UI)
     add_subdirectory(unix)
 endif()
+
+

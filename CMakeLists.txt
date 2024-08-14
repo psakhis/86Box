@@ -139,11 +139,11 @@ option(DEV_BRANCH   "Development branch"                                        
 option(DISCORD      "Discord Rich Presence support"                                 ON)
 option(DEBUGREGS486 "Enable debug register opeartion on 486+ CPUs"                  OFF)
 
-if(WIN32)
-    set(QT ON)
-else()
-    option(QT "Qt GUI" ON)
-endif()
+#if(WIN32)
+#    set(QT ON)
+#else()
+#    option(QT "Qt GUI" ON)
+#endif()
 
 # Development branch features
 #
