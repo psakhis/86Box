@@ -27,10 +27,13 @@ set(THREADS_PREFER_PTHREAD_FLAG TRUE)
 find_package(Threads REQUIRED)
 target_link_libraries(86Box Threads::Threads)
 
-add_library(ui OBJECT unix_sdl.c unix_cdrom.c dummy_cdrom_ioctl.c)
+add_library(ui OBJECT unix_sdl.c unix_cdrom.c dummy_cdrom_ioctl.c glad.c unix_opengl_glslp.c unix_opengl.c)
 target_compile_definitions(ui PUBLIC _FILE_OFFSET_BITS=64)
 target_link_libraries(ui ${CMAKE_DL_LIBS})
 
 if(APPLE)
     target_sources(plat PRIVATE macOSXGlue.m)
 endif()
+
+target_sources(plat PRIVATE unix_sdl2_joystick.c)
+

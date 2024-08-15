@@ -348,9 +348,9 @@ uint8_t GroovyMister::CmdInit(const char* misterHost, uint16_t misterPort, uint8
 #else
 	printf("[DEBUG] Initialising socket...\n");
 	m_sockFD = socket(AF_INET, SOCK_DGRAM, IPPROTO_UDP);
-	if (sockfd < 0)
+	if (m_sockFD < 0)
 	{
-		LOG(0,"[MiSTer] Could not create socket : %d", sockfd);
+		LOG(0,"[MiSTer] Could not create socket : %d", m_sockFD);
 	}
 
 	LOG(0,"[MiSTer] Setting socket async %s...\n","");
@@ -700,7 +700,7 @@ void GroovyMister::BindInputs(const char* misterHost, uint16_t misterPort)
 	m_sockInputsFD = socket(AF_INET, SOCK_DGRAM, IPPROTO_UDP);
 	if (m_sockInputsFD < 0)
 	{
-		LOG(0,"[MiSTer][Inputs] Could not create socket : %d", sockfd);
+		LOG(0,"[MiSTer][Inputs] Could not create socket : %d", m_sockInputsFD);
 	}
 	LOG(0,"[MiSTer][Input] Setting socket async %s...\n","");
 	// Non blocking socket
@@ -820,12 +820,12 @@ if (USE_RIO)
 }
 
 void GroovyMister::SendStream(uint8_t whichBuffer, uint32_t bytesToSend, uint32_t cSize)
-{
-	DWORD flags = RIO_MSG_DONT_NOTIFY | RIO_MSG_DEFER;
+{	
 	uint32_t bytesSended = 0;
 #ifdef _WIN32
 if (USE_RIO)
 {
+	DWORD flags = RIO_MSG_DONT_NOTIFY | RIO_MSG_DEFER;
 	int i=0;
 	while (bytesSended < bytesToSend)
 	{

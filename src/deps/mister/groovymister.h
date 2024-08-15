@@ -8,6 +8,12 @@
  #include <ws2tcpip.h>
  #include <mswsock.h>
  #include "rio.h"
+#else
+ #include <cstring>
+ #include <cstdio>
+ #include <sys/socket.h>
+ #include <netinet/in.h>
+ #include <time.h>
 #endif
 
 #ifndef GROOVYMISTER_VERSION

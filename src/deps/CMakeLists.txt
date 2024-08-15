@@ -48,8 +48,16 @@ endif()
 if(UNIX)
   target_sources(switchres PRIVATE
     switchres/display_linux.cpp 
-    switchres/custom_video_xrandr.cpp     
+    switchres/custom_video_xrandr.cpp   
+    switchres/custom_video_drmkms.cpp
+    switchres/display_sdl2.cpp
 )
+  target_include_directories(switchres PRIVATE /usr/include/libdrm)
+  target_compile_options(switchres PRIVATE -DSWITCHRES_VERSION="2.2.1")  
+  target_compile_options(switchres PRIVATE -fPIC)  
+  target_compile_options(switchres PRIVATE -DSR_WITH_XRANDR)  
+  target_compile_options(switchres PRIVATE -DSR_WITH_KMSDRM) 
+  target_compile_options(switchres PRIVATE -DSR_WITH_SDL2)  
 endif()
 
 add_library(mister STATIC

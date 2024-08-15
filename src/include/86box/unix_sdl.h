@@ -10,5 +10,6 @@ extern void sdl_resize(int x, int y);
 extern void sdl_enable(int enable);
 extern void sdl_set_fs(int fs);
 extern void sdl_reload(void);
+extern void sdl_blit(int x, int y, int w, int h); //psakhis
 
 #endif /*_UNIX_SDL_H*/

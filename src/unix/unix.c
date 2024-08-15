@@ -38,6 +38,7 @@
 #include <86box/device.h>
 #include <86box/gameport.h>
 #include <86box/unix_sdl.h>
+#include <86box/unix_opengl.h> //psakhis
 #include <86box/timer.h>
 #include <86box/nvr.h>
 #include <86box/version.h>
@@ -47,6 +48,8 @@
 
 #define __USE_GNU 1 /* shouldn't be done, yet it is */
 #include <pthread.h>
+
+#include "../deps/mister/groovymister_wrapper.h"
 
 static int      first_use = 1;
 static uint64_t StartingTime;
@@ -60,11 +63,18 @@ int             fixed_size_x = 640;
 int             fixed_size_y = 480;
 extern int      title_set;
 extern wchar_t  sdl_win_title[512];
-plat_joystick_t plat_joystick_state[MAX_PLAT_JOYSTICKS];
-joystick_t      joystick_state[MAX_JOYSTICKS];
-int             joysticks_present;
+//plat_joystick_t plat_joystick_state[MAX_PLAT_JOYSTICKS];
+//joystick_t      joystick_state[MAX_JOYSTICKS];
+//int             joysticks_present;
+
+
+uint8_t keys_mister[32]; //psakhis
+uint8_t mouse_mister; //psakhis
+uint32_t mister_frame;
+
 SDL_mutex      *blitmtx;
 SDL_threadID    eventthread;
+int             mouse_capture; //psakhis
 static int      exit_event         = 0;
 static int      fullscreen_pending = 0;
 uint32_t        lang_id  = 0x0409; // Multilangual UI variables, for now all set to LCID of en-US
@@ -189,6 +199,22 @@ typedef struct sdl_blit_params {
 sdl_blit_params params  = { 0, 0, 0, 0 };
 int             blitreq = 0;
 
+static const struct {
+    const char *name;
+    int         local;
+    int (*init)(void *);
+    void (*close)(void);
+    void (*resize)(int x, int y);
+    int (*pause)(void);
+    void (*enable)(int enable);
+    void (*set_fs)(int fs);
+    void (*reload)(void);
+    void (*blit)(int x, int y, int w, int h);
+} vid_apis[2] = {    
+    { "SDL_OpenGL", 1, (int (*)(void *)) sdl_initho, sdl_close, NULL, sdl_pause, NULL, sdl_set_fs, NULL, sdl_blit },
+    { "OpenGL_Core", 1, (int (*)(void *)) opengl_init, opengl_close, NULL, opengl_pause, NULL, opengl_set_fs, NULL, opengl_blit },
+  };
+  
 void *
 dynld_module(const char *name, dllimp_t *table)
 {
@@ -553,6 +579,10 @@ main_thread(void *param)
 #endif
             drawits += (new_time - old_time);
         old_time = new_time;
+
+        if (vid_mister)
+           drawits = 10;
+                   
         if (drawits > 0 && !dopause) {
             /* Yes, so do one frame now. */
             drawits -= 10;
@@ -568,8 +598,8 @@ main_thread(void *param)
                 nvr_dosave = 0;
                 frames     = 0;
             }
-        } else /* Just so we dont overload the host OS. */
-            SDL_Delay(1);
+        } //else /* Just so we dont overload the host OS. */
+        //    SDL_Delay(1);
 
         /* If needed, handle a screen resize. */
         if (atomic_load(&doresize_monitors[0]) && !video_fullscreen && !is_quit) {
@@ -1014,8 +1044,8 @@ monitor_thread(void *param)
                         "Released under the GNU General Public License version 2 or later. See LICENSE for more information.\n",
                         EMU_NAME, EMU_VERSION_FULL, EMU_GIT_HASH, ARCH_STR, DYNAREC_STR);
                 } else if (strncasecmp(xargv[0], "fullscreen", 10) == 0) {
-                    video_fullscreen   = video_fullscreen ? 0 : 1;
-                    fullscreen_pending = 1;
+                    video_fullscreen   = video_fullscreen ? 0 : 1;   
+                    fullscreen_pending = 1;            
                 } else if (strncasecmp(xargv[0], "pause", 5) == 0) {
                     plat_pause(dopause ^ 1);
                     printf("%s", dopause ? "Paused.\n" : "Unpaused.\n");
@@ -1209,28 +1239,131 @@ main(int argc, char **argv)
     } else
         fprintf(stderr, "libedit not found, line editing will be limited.\n");
     mousemutex = SDL_CreateMutex();
-    sdl_initho();
+    //sdl_initho();
+    
+    video_fullscreen = 1;
+    fullscreen_pending = 1;
+    
+    if (!vid_apis[vid_api].init(NULL))    
+     return -1;       
 
-    if (start_in_fullscreen) {
+    /*if (start_in_fullscreen) {
         video_fullscreen = 1;
         sdl_set_fs(1);
-    }
+    } */       
+    
     /* Fire up the machine. */
     pc_reset_hard_init();
 
     /* Set the PAUSE mode depending on the renderer. */
     plat_pause(0);
+    
+    if (vid_mister)
+    {
+       memset(keys_mister, 0, sizeof(keys_mister));
+       mouse_mister = 0;
+       mister_frame = 0;
+       gmw_bindInputs(vid_mister_ip);
+    }
 
     /* Initialize the rendering window, or fullscreen. */
 
     do_start();
 #ifndef USE_CLI
     thread_create(monitor_thread, NULL);
-#endif
+#endif        
     SDL_AddTimer(1000, timer_onesec, NULL);
     while (!is_quit) {
         static int mouse_inside = 0;
-
+        if (vid_mister)
+        {       
+        	//keyboard
+        	gmw_pollInputs();
+        	gmw_fpgaPS2Inputs ps2Inputs; 	
+ 		gmw_getPS2Inputs(&ps2Inputs); 
+ 		for (int i=0; i<256; i++)
+		{
+			int bit_pos = 1 & (ps2Inputs.ps2Keys[i / 8] >> (i % 8));		
+			int bit_pre = 1 & (keys_mister[i / 8] >> (i % 8));
+			if (bit_pre && bit_pos && mister_frame != ps2Inputs.ps2Frame) //press continued
+			{
+				uint16_t xtkey = sdl_to_xt[i];	
+				keyboard_input(1, xtkey);
+			}
+			if (bit_pre != bit_pos) //change keypress
+			{		
+				uint16_t xtkey = sdl_to_xt[i];	
+				if (bit_pos)
+				{	
+					keyboard_input(1, xtkey);														
+				}
+				else
+				{					
+					keyboard_input(0, xtkey);	 
+				}
+			}	
+		}		
+		memcpy(&keys_mister, &ps2Inputs.ps2Keys, sizeof(keys_mister)); 	        	
+		
+		//mouse					
+		int buttonmask = 0;
+		if ((ps2Inputs.ps2Mouse & (1 << 0)) && !(mouse_mister & (1 << 0)))
+ 		{ 			 		
+ 			buttonmask = 1;	 			
+ 			SDL_LockMutex(mousemutex);                           
+                        mouse_set_buttons_ex(mouse_get_buttons_ex() | buttonmask);
+                        SDL_UnlockMutex(mousemutex);                                                                                                                                                                            
+		}
+		if (!(ps2Inputs.ps2Mouse & (1 << 0)) && (mouse_mister & (1 << 0)))
+ 		{
+ 			buttonmask = 1;	 			
+ 			mouse_set_buttons_ex(mouse_get_buttons_ex() & ~buttonmask);
+ 			SDL_UnlockMutex(mousemutex);	
+ 			if (!(mouse_capture || video_fullscreen) && mouse_inside)
+                            plat_mouse_capture(1);		 			 				
+		} 
+		if ((ps2Inputs.ps2Mouse & (1 << 1)) && !(mouse_mister & (1 << 1)))
+ 		{ 			 			
+ 			buttonmask = 2;	 			
+ 			SDL_LockMutex(mousemutex);                           
+                        mouse_set_buttons_ex(mouse_get_buttons_ex() | buttonmask);
+                        SDL_UnlockMutex(mousemutex);
+		}
+		if (!(ps2Inputs.ps2Mouse & (1 << 1)) && (mouse_mister & (1 << 1)))
+		{
+			buttonmask = 2;	 			
+ 			SDL_LockMutex(mousemutex);                           
+                        mouse_set_buttons_ex(mouse_get_buttons_ex() & ~buttonmask);
+                        SDL_UnlockMutex(mousemutex);
+		}
+		if (!(ps2Inputs.ps2Mouse & (1 << 2)) && (mouse_mister & (1 << 2)))
+ 		{
+ 			 exit_event = 1;
+		} 
+		
+		if (mister_frame != ps2Inputs.ps2Frame)
+		{
+			if (mouse_capture || video_fullscreen)
+			{	
+				int mouse_x = 0;
+				int mouse_y = 0;								
+				if (ps2Inputs.ps2Mouse & (1 << 4))															
+				    mouse_x += -255 + ps2Inputs.ps2MouseX;												
+				else
+				    mouse_x += ps2Inputs.ps2MouseX;				
+				if (ps2Inputs.ps2Mouse & (1 << 5))				
+				    mouse_y -= -255 + ps2Inputs.ps2MouseY;												
+				else
+				    mouse_y -= ps2Inputs.ps2MouseY;				
+				SDL_LockMutex(mousemutex); 
+				mouse_scale(mouse_x, mouse_y);
+				SDL_UnlockMutex(mousemutex);				 
+			}						
+		}							    
+		mouse_mister = ps2Inputs.ps2Mouse;		
+		mister_frame = ps2Inputs.ps2Frame;
+        }
+        
         while (SDL_PollEvent(&event)) {
             switch (event.type) {
                 case SDL_QUIT:
@@ -1261,6 +1394,13 @@ main(int argc, char **argv)
                 case SDL_MOUSEBUTTONDOWN:
                 case SDL_MOUSEBUTTONUP:
                     {
+                    	//psakhis   
+                    	if (event.button.button == SDL_BUTTON_MIDDLE) {
+                    	    exit_event = 1;                                  
+                            break; 
+                        }    
+                        //end psakhis
+                        
                         if ((event.button.button == SDL_BUTTON_LEFT)
                             && !(mouse_capture || video_fullscreen)
                             && event.button.state == SDL_RELEASED
@@ -1338,8 +1478,9 @@ main(int argc, char **argv)
             plat_mouse_capture(0);
         }
         if (blitreq) {
-            extern void sdl_blit(int x, int y, int w, int h);
-            sdl_blit(params.x, params.y, params.w, params.h);
+            //extern void sdl_blit(int x, int y, int w, int h);
+            //sdl_blit(params.x, params.y, params.w, params.h);
+            vid_apis[vid_api].blit(params.x, params.y, params.w, params.h);
         }
         if (title_set) {
             extern void ui_window_title_real(void);
@@ -1366,10 +1507,52 @@ main(int argc, char **argv)
         f_rl_callback_handler_remove();
     return 0;
 }
+
+/* Return the VIDAPI number for the given name. */
+int
+plat_vidapi(const char *api)
+{	 
+    int i;
+
+    /* Default/System is SDL Hardware. */
+    if (!strcasecmp(api, "default") || !strcasecmp(api, "system") || !strcasecmp(api, "sdl"))
+        return (0);  
+
+    for (i = 0; i < 2; i++) {
+        if (vid_apis[i].name && !strcasecmp(vid_apis[i].name, api))
+            return (i);
+    }
+
+    /* Default value. */
+    return (0);
+}
+
+/* Return the VIDAPI name for the given number. */
 char *
-plat_vidapi_name(int i)
+plat_vidapi_name(int api)
 {
-    return "default";
+    char *name = "default";
+
+    switch (api) {
+        case 0:
+            name = "sdl_opengl";
+            break;     
+        case 1:
+            name = "opengl_core";
+            break;     
+        default:
+            fatal("Unknown renderer: %i\n", api);
+            break;
+    }
+
+    return (name);
+}
+
+void
+plat_mouse_capture(int on)
+{   
+    SDL_SetRelativeMouseMode((SDL_bool) on);
+    mouse_capture = on;  
 }
 
 /* Sets up the program language before initialization. */
@@ -1412,24 +1595,25 @@ plat_language_code_r(uint32_t lcid, char *outbuf, int len)
     /* or maybe not */
     return;
 }
-
+/*
 void
 joystick_init(void)
 {
-    /* No-op. */
+    // No-op. 
 }
 
 void
 joystick_close(void)
 {
-    /* No-op. */
+    // No-op. 
 }
 
 void
 joystick_process(void)
 {
-    /* No-op. */
+    / No-op. 
 }
+*/
 
 void
 startblit(void)
