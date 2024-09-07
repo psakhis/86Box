@@ -45,7 +45,7 @@ void mister_init(const char* misterHost, uint8_t lz4Frames, uint16_t mtu)
    if (!mister_video.is_connected)
    {	
    	printf("[MiSTer] mister_init ip %s lz4 %d sound_rate %d sound_chan %d rgb_mode %d mtu %d\n", misterHost, lz4Frames, 3, 2, 0, mtu);
-   	gmw_init(misterHost, lz4Frames, 3, 2, 0, mtu);	
+   	gmw_init(misterHost, lz4Frames, 48000, 2, 0, mtu);	
    	mister_video.is_connected = 1;
    	mister_video.modeline_active = 0;
    	mister_video.mode_switch_pending = 1;
@@ -117,18 +117,18 @@ void mister_blit(void)
       mister_video.mode_switch_pending = 0;
    } 
    
-   mister_video.frame++;    
+   mister_video.frame++;   
+   //gmw_getACK(0); 
    gmw_getStatus(&status);
       
    if (status.frame > mister_video.frame)
      mister_video.frame = status.frame + 1;   
      
-   //if (mister_video.frame > 10) //first frames so slow emulating it
+   if (mister_video.frame > 1) //first frames so slow emulating it
    {   
-   	gmw_blit(mister_video.frame, mister_video.field, 0, 0);
-   
-   	if (status.frame < mister_video.frame + 1)
-     		gmw_waitSync();
+   	gmw_blit(mister_video.frame, mister_video.field, 0, 150000);   
+   	//if (status.frame < mister_video.frame + 1)
+     		gmw_waitSync();   	
    }
 }
 
