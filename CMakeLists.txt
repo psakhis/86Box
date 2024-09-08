@@ -139,13 +139,14 @@ option(DEV_BRANCH   "Development branch"                                        
 option(DISCORD      "Discord Rich Presence support"                              ON)
 option(DEBUGREGS486 "Enable debug register opeartion on 486+ CPUs"               OFF)
 
-if(WIN32)
-    set(QT ON)
-    option(CPPTHREADS "C++11 threads" OFF)
-else()
-    option(QT "Qt GUI" ON)
-    option(CPPTHREADS "C++11 threads" ON)
-endif()
+#Commented for 86box4crt
+#if(WIN32)
+#   set(QT ON)
+#   option(CPPTHREADS "C++11 threads" OFF)
+#else()
+#   option(QT "Qt GUI" ON)
+#   option(CPPTHREADS "C++11 threads" ON)
+#endif()
 
 # Development branch features
 #
