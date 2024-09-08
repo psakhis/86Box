@@ -5484,10 +5484,10 @@ const machine_t machines[] = {
         .cpu = {
             .package = CPU_PKG_386DX | CPU_PKG_SOCKET1,
             .block = CPU_BLOCK_NONE,
-            .min_bus = 25000000,
-            .max_bus = 66666667,
-            .min_voltage = 5000,
-            .max_voltage = 5000,
+            .min_bus = 0,
+            .max_bus = 0,
+            .min_voltage = 0,
+            .max_voltage = 0,
             .min_multi = 0,
             .max_multi = 0
         },
@@ -5524,10 +5524,10 @@ const machine_t machines[] = {
         .cpu = {
             .package = CPU_PKG_386DX | CPU_PKG_SOCKET1,
             .block = CPU_BLOCK_NONE,
-            .min_bus = 25000000,
-            .max_bus = 66666667,
-            .min_voltage = 5000,
-            .max_voltage = 5000,
+            .min_bus = 0,
+            .max_bus = 0,
+            .min_voltage = 0,
+            .max_voltage = 0,
             .min_multi = 0,
             .max_multi = 0
         },
@@ -6476,7 +6476,7 @@ const machine_t machines[] = {
             .step = 1024
         },
         .nvrmask = 127,
-        .kbc_device = &keyboard_ps2_ami_device,
+        .kbc_device = &keyboard_at_ami_device,
         .kbc_p1 = 0xff,
         .gpio = 0xffffffff,
         .gpio_acpi = 0xffffffff,
@@ -13758,7 +13758,7 @@ const machine_t machines[] = {
         .device = NULL,
         .fdc_device = NULL,
         .sio_device = NULL,
-        .vid_device = &s3_virge_375_onboard_pci_device,
+        .vid_device = &s3_virge_325_onboard_pci_device,
         .snd_device = &cs4236b_device,
         .net_device = NULL
     },
@@ -14678,7 +14678,7 @@ const machine_t machines[] = {
     /* Has a Winbond W83977EF Super I/O chip with on-chip KBC with AMIKey-2 KBC
        firmware. */
     {
-        .name = "[SMSC VictoryBX-66] A-Trend ATC-6310BXII",
+        .name = "[SMSC VictoryBX-66] A-Trend ATC6310BXII",
         .internal_name = "atc6310bxii",
         .type = MACHINE_TYPE_SLOT1,
         .chipset = MACHINE_CHIPSET_SMSC_VICTORYBX_66,
@@ -15397,7 +15397,7 @@ const machine_t machines[] = {
     /* Has a Winbond W83977EF Super I/O chip with on-chip KBC with AMIKey-2 KBC
        firmware. */
     {
-        .name = "[SMSC VictoryBX-66] A-Trend ATC-7020BXII",
+        .name = "[SMSC VictoryBX-66] A-Trend ATC7020BXII",
         .internal_name = "atc7020bxii",
         .type = MACHINE_TYPE_SOCKET370,
         .chipset = MACHINE_CHIPSET_SMSC_VICTORYBX_66,
