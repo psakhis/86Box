@@ -123,6 +123,7 @@ extern int      vid_mister_mtu;             /* (C) video */
 extern int      vid_mister_lz4;             /* (C) video */  
 extern char     vid_mister_ip[16];          /* (C) video */ 
 extern int      vid_mister_interlaced_fb;   /* (C) video */ 
+extern int      vid_mister_delta;           /* (C) video */ 
 extern int      video_fullscreen;           /* (C) video */
 extern int      video_fullscreen_first;     /* (C) video */
 extern int      video_fullscreen_scale;     /* (C) video */
@@ -159,7 +160,6 @@ extern int      enable_discord;             /* (C) enable Discord integration */
 extern int      other_ide_present;          /* IDE controllers from non-IDE cards are present */
 extern int      other_scsi_present;         /* SCSI controllers from non-SCSI cards are present */
 
-extern int    hard_reset_pending;
 extern int    fixed_size_x;
 extern int    fixed_size_y;
 extern int    do_auto_pause;                /* (C) Auto-pause the emulator on focus loss */

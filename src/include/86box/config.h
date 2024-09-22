@@ -62,7 +62,8 @@ typedef struct config_t {
     int vid_mister_mtu;       /* GroovyMiSTer jumbo frames */
     int vid_mister_lz4;       /* GroovyMiSTer lz4 compression */
     char vid_mister_ip[16];   /* GroovyMiSTer ip */  
-    int vid_mister_interlaced_fb; /*GroovyMiSTer interlaced frame buffer */
+    int vid_mister_interlaced_fb; /* GroovyMiSTer interlaced frame buffer */
+    int vid_mister_delta;     /* GroovyMiSTer delta frames */
     int vid_grayscale;        /* Video is grayscale */
     int vid_grayscale_type;   /* Video grayscale type */
     int vid_invert_display;   /* Invert display */

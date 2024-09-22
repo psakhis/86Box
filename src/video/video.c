@@ -714,7 +714,7 @@ video_update_sw_modeline_monitor(int w, int h, double vfreq, int monitor_index)
      
      if (vid_mister)
      {        	     
-             sr_init_disp("dummy", NULL);
+             sr_init_disp("dummy", NULL);            
 	     sr_mode sw;
 	     int sr_mode_flags = 0; 
 	     int retSR = 0;
@@ -740,10 +740,10 @@ video_blit_memtomister(int start_x, int start_y, int w, int h, int monitor_index
 {   
     if (!vid_mister || !mister_is_connected())                     
        return;
-       
-    char* b_rgb = mister_get_blit_buffer();
+          
     uint32_t temp = 0x00000000;
     uint32_t c = 0; 
+    uint32_t match_delta = 0;
            
     if (start_x + w < monitors[monitor_index].mon_sw_w)
     {
@@ -759,13 +759,52 @@ video_blit_memtomister(int start_x, int start_y, int w, int h, int monitor_index
     
     int field = mister_get_field();
     int interlaced_fb = mister_is_interlaced_fb();
+    char* b_rgb = mister_get_blit_buffer(field);
+    uint8_t* b_delta = (uint8_t*) mister_get_blit_buffer_delta();
     
     for (int y = field; y < h; ++y) {       
         for (int x = 0; x < w; ++x) {    
             if (monitors[monitor_index].target_buffer == NULL)            
+            {
                 memset(&b_rgb[c], 0x00, 3);
+                if (vid_mister_delta)
+                {
+                	memset(&b_delta[c], 0x00, 3);
+                	match_delta++;
+                }	
+            }   
             else {            	                                                      
-                temp         = monitors[monitor_index].target_buffer->line[start_y + y][start_x + x];                                           
+                temp         = monitors[monitor_index].target_buffer->line[start_y + y][start_x + x];   
+                if (vid_mister_delta)
+                {
+                	if (((temp >> 16) & 0xff) == b_rgb[c + 2])
+                	{
+                		match_delta++;
+                		b_delta[c + 2] = 0x00;
+                	}
+                	else
+                	{
+                		b_delta[c + 2] = (uint8_t) ((temp >> 16) & 0xff) - (uint8_t) b_rgb[c + 2];
+                	}
+                	if (((temp >> 8) & 0xff) == b_rgb[c + 1])
+                	{
+                		match_delta++;
+                		b_delta[c + 1] = 0x00;
+                	}
+                	else
+                	{
+                		b_delta[c + 1] = (uint8_t) ((temp >> 8) & 0xff) - (uint8_t) b_rgb[c + 1];
+                	}
+                	if ((temp & 0xff) == b_rgb[c + 0])
+                	{
+                		match_delta++;
+                		b_delta[c + 0] = 0x00;
+                	}
+                	else
+                	{
+                		b_delta[c + 0] = (uint8_t) (temp & 0xff) - (uint8_t) b_rgb[c + 0];
+                	}
+                }                                        
                 b_rgb[c + 2] = (temp >> 16) & 0xff;
                 b_rgb[c + 1] = (temp >> 8) & 0xff;
                 b_rgb[c + 0] = temp & 0xff;                               
@@ -777,7 +816,7 @@ video_blit_memtomister(int start_x, int start_y, int w, int h, int monitor_index
         if (interlaced_fb) y++;
     }
     
-    mister_blit();      	
+    mister_blit(match_delta);      	
 }
 
 int
@@ -965,7 +1004,7 @@ video_monitor_init(int index)
     if (vid_mister)
     {
        sr_init();      
-       mister_init(vid_mister_ip, vid_mister_lz4, vid_mister_mtu ? 3800 : 1500);      
+       mister_init(vid_mister_ip, (vid_mister_delta && vid_mister_lz4) ? 2 : vid_mister_lz4, vid_mister_mtu ? 3800 : 1500);      
     }   
 }
 

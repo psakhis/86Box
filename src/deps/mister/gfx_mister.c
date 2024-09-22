@@ -11,6 +11,7 @@
 
 typedef struct mister_video_info
 {
+   uint8_t  is_error;
    uint8_t  is_connected;
    uint8_t  modeline_active;
    uint8_t  mode_switch_pending;
@@ -42,11 +43,22 @@ static uint8_t *audio_buffer = 0;
 
 void mister_init(const char* misterHost, uint8_t lz4Frames, uint16_t mtu)
 {
+   if (mister_video.is_error)
+     return;
+     
    if (!mister_video.is_connected)
    {	
    	printf("[MiSTer] mister_init ip %s lz4 %d sound_rate %d sound_chan %d rgb_mode %d mtu %d\n", misterHost, lz4Frames, 3, 2, 0, mtu);
-   	gmw_init(misterHost, lz4Frames, 48000, 2, 0, mtu);	
-   	mister_video.is_connected = 1;
+   	if (gmw_init(misterHost, lz4Frames, 48000, 2, 0, mtu) < 0)
+   	{
+   		mister_video.is_connected = 0;
+   		mister_video.is_error = 1;
+   		printf("[MiSTer] mister_init failed\n");
+   	}
+   	else
+   	{	
+   		mister_video.is_connected = 1;
+   	}	
    	mister_video.modeline_active = 0;
    	mister_video.mode_switch_pending = 1;
    	mister_video.frame = 0;
@@ -95,9 +107,14 @@ void mister_set_mode(double pClock, uint16_t hActive, uint16_t hBegin, uint16_t 
     
 }
 
-char* mister_get_blit_buffer(void)
+char* mister_get_blit_buffer(uint8_t field)
 {
-	return gmw_get_pBufferBlit();
+	return gmw_get_pBufferBlit(field);
+}
+
+char* mister_get_blit_buffer_delta(void)
+{
+	return gmw_get_pBufferBlitDelta();
 }
 
 char* mister_get_audio_buffer(void)
@@ -105,7 +122,7 @@ char* mister_get_audio_buffer(void)
 	return gmw_get_pBufferAudio();
 }
 
-void mister_blit(void)
+void mister_blit(uint32_t match_bytes)
 {      
    if (!mister_video.is_connected)
       return;
@@ -124,9 +141,9 @@ void mister_blit(void)
    if (status.frame > mister_video.frame)
      mister_video.frame = status.frame + 1;   
      
-   if (mister_video.frame > 1) //first frames so slow emulating it
+   //if (mister_video.frame > 10) //first frames so slow emulating it
    {   
-   	gmw_blit(mister_video.frame, mister_video.field, 0, 150000);   
+   	gmw_blit(mister_video.frame, mister_video.field, 0, 0, match_bytes);   
    	//if (status.frame < mister_video.frame + 1)
      		gmw_waitSync();   	
    }

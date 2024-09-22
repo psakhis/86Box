@@ -167,6 +167,7 @@ int      vid_mister_mtu                         = 0;              /* (C) video *
 int      vid_mister_lz4                         = 1;              /* (C) video */
 char     vid_mister_ip[16]                      = { '\0' };       /* (C) video */
 int      vid_mister_interlaced_fb               = 0;              /* (C) video */
+int      vid_mister_delta                       = 0;              /* (C) video */
 int      vid_display                            = 0;              /* (C) video */
 int      video_fullscreen                       = 0;              /* (C) video */
 int      video_fullscreen_scale                 = 0;              /* (C) video */
